@@ -112,6 +112,20 @@ func signCSRs(cfg *Config, files []string, caName string) error {
 		if err := pki.Sign(caSigner, request); err != nil {
 			return err
 		}
+
+		cert, err := pki.GetBundle(caName, request.Name)
+		if err != nil {
+			return err
+		}
+
+		certFile, err := createFileIfNotExist(cert.Name+".crt", cfg.OverwriteFiles)
+		if err != nil {
+			return err
+		}
+
+		if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Cert.Raw}); err != nil {
+			return err
+		}
 	}
 
 	return nil
