@@ -5,17 +5,21 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
+	"math/big"
+	"os"
 	"path"
+	"strings"
+	"time"
 
+	"github.com/google/easypki/pkg/easypki"
 	"github.com/google/easypki/pkg/store"
 	"gopkg.in/urfave/cli.v2"
 )
 
-func initCA(cfg *Config, genSelfSignedCert bool) error {
-	fmt.Println("Initialize certificate authority at", cfg.CAConfig.RootDir)
-	if err := store.InitCADir(cfg.CAConfig.RootDir); err != nil {
-		return err
-	}
+func initCA(cfg *Config, caName string) error {
+	fmt.Println("Initialize certificate authority at", path.Join(cfg.CAConfig.RootDir, caName))
+	caStore := getCAStore(cfg)
 
 	fmt.Println("Generate key/cert")
 	certParams, err := CertParamsFromConfig(cfg.CertConfig)
@@ -28,37 +32,79 @@ func initCA(cfg *Config, genSelfSignedCert bool) error {
 	if err != nil {
 		return err
 	}
-	privateKeyFile, err := createFileIfNotExist(path.Join(cfg.CAConfig.RootDir, "keys", "ca.key"), cfg.OverwriteFiles)
+
+	certTemplate := certParams.CACertTemplate()
+	cert, err := x509.CreateCertificate(rand.Reader, certTemplate, certTemplate, privateKey.Public(), privateKey)
 	if err != nil {
-		return err
-	}
-	if err := pem.Encode(privateKeyFile, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}); err != nil {
 		return err
 	}
 
-	csr, err := x509.CreateCertificateRequest(rand.Reader, certParams.CSRTemplate(), privateKey)
-	if err != nil {
-		return err
-	}
-	csrFile, err := createFileIfNotExist(path.Join(cfg.CAConfig.RootDir, "certs", "ca.csr"), cfg.OverwriteFiles)
-	if err != nil {
-		return err
-	}
-	if err := pem.Encode(csrFile, &pem.Block{Type: "CERTIFICATE SIGNING REQUEST", Bytes: csr}); err != nil {
-		return err
-	}
+	return caStore.Add(caName, caName, true, x509.MarshalPKCS1PrivateKey(privateKey), cert)
+}
 
-	if genSelfSignedCert {
-		certTemplate := certParams.CACertTemplate()
-		cert, err := x509.CreateCertificate(rand.Reader, certTemplate, certTemplate, privateKey.Public(), privateKey)
+var caNameFlag = cli.StringFlag{
+	Name:  "ca",
+	Usage: "Certificate authority name",
+	Value: "root",
+}
+
+var initCACmd = cli.Command{
+	Name:  "init-ca",
+	Usage: "initialize certificate authority",
+	Flags: []cli.Flag{&caNameFlag},
+	Action: func(ctx *cli.Context) error {
+		return initCA(ctx.App.Metadata[configContextKey].(*Config), ctx.String(caNameFlag.Name))
+	},
+}
+
+func getCAStore(cfg *Config) *store.Local {
+	os.Mkdir(cfg.CAConfig.RootDir, os.ModePerm)
+	return &store.Local{Root: cfg.CAConfig.RootDir}
+}
+
+func signCSRs(cfg *Config, files []string, caName string) error {
+	pki := easypki.EasyPKI{Store: getCAStore(cfg)}
+	caSigner, err := pki.GetCA(caName)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		fmt.Println("Signing", file)
+		content, err := ioutil.ReadFile(file)
 		if err != nil {
 			return err
 		}
-		certFile, err := createFileIfNotExist(path.Join(cfg.CAConfig.RootDir, "certs", "ca.crt"), cfg.OverwriteFiles)
+		block, _ := pem.Decode(content)
+		csr, err := x509.ParseCertificateRequest(block.Bytes)
 		if err != nil {
 			return err
 		}
-		if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert}); err != nil {
+		if err := csr.CheckSignature(); err != nil {
+			return err
+		}
+
+		request := &easypki.Request{
+			Name:                strings.TrimSuffix(path.Base(file), path.Ext(file)),
+			IsClientCertificate: true,
+			PrivateKeySize:      cfg.KeySize,
+			Template: &x509.Certificate{
+				Signature:          csr.Signature,
+				SignatureAlgorithm: csr.SignatureAlgorithm,
+
+				PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
+				PublicKey:          csr.PublicKey,
+
+				SerialNumber: big.NewInt(2),
+				Issuer:       caSigner.Cert.Subject,
+				Subject:      csr.Subject,
+				NotBefore:    time.Now().UTC(),
+				NotAfter:     time.Now().Add(cfg.ValidityPeriod.Duration).UTC(),
+				KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+				ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+			},
+		}
+
+		if err := pki.Sign(caSigner, request); err != nil {
 			return err
 		}
 	}
@@ -66,16 +112,11 @@ func initCA(cfg *Config, genSelfSignedCert bool) error {
 	return nil
 }
 
-var onlyCACSRFlag = cli.BoolFlag{
-	Name:  "only-csr",
-	Usage: "Generate only certificate signing request",
-}
-
-var initCACmd = cli.Command{
-	Name:  "init-ca",
-	Usage: "initialize certificate authority",
-	Flags: []cli.Flag{&onlyCACSRFlag},
+var signCommand = cli.Command{
+	Name:  "sign",
+	Usage: "Sign a certificate signing request",
+	Flags: []cli.Flag{&caNameFlag},
 	Action: func(ctx *cli.Context) error {
-		return initCA(ctx.App.Metadata[configContextKey].(*Config), !ctx.Bool(onlyCACSRFlag.Name))
+		return signCSRs(ctx.App.Metadata[configContextKey].(*Config), ctx.Args().Tail(), ctx.String(caNameFlag.Name))
 	},
 }
