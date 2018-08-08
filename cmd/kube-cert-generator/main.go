@@ -31,7 +31,7 @@ func main() {
 			defer cfgFile.Close()
 
 			var cfg Config
-			if _, err := toml.DecodeReader(os.Stdin, &cfg); err != nil {
+			if _, err := toml.DecodeReader(cfgFile, &cfg); err != nil {
 				return err
 			}
 			context.App.Metadata[configContextKey] = &cfg

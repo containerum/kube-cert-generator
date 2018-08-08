@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"path"
 	"reflect"
 
 	"github.com/containerum/kube-cert-generator/pkg/cert"
@@ -30,7 +29,7 @@ func (c csrParams) String() string {
 
 var kubeStandardCSRs = []csrParams{
 	{FileName: "admin", CN: "admin", O: "system:masters", IncludeSANs: false},
-	{FileName: "kube-controller-manager.conf", CN: "system:kube-controller-manager", O: "system:kube-controller-manager", IncludeSANs: false},
+	{FileName: "kube-controller-manager", CN: "system:kube-controller-manager", O: "system:kube-controller-manager", IncludeSANs: false},
 	{FileName: "kube-proxy", CN: "system:kube-proxy", O: "system:node-proxier", IncludeSANs: false},
 	{FileName: "kubernetes", CN: "kubernetes", O: "kubernetes", IncludeSANs: true},
 	{FileName: "kube-scheduler", CN: "system:kube-scheduler", O: "system:kube-scheduler", IncludeSANs: false},
@@ -66,7 +65,6 @@ func generateCSRs(cfg *Config) error {
 	fmt.Println("Generate basic kubernetes csr-key pairs")
 	for _, param := range kubeStandardCSRs {
 		fmt.Println(param)
-		param.FileName = path.Join("main-certs", param.FileName)
 		certParam, err := CertParamsFromConfig(cfg.CertConfig)
 		if err != nil {
 			return err
@@ -85,7 +83,7 @@ func generateCSRs(cfg *Config) error {
 
 	fmt.Println("Generate node certificates")
 	for _, node := range cfg.WorkerNodes {
-		fmt.Printf("Node: %s, Addresses: %v", node.Alias, node.Addresses)
+		fmt.Printf("Node: %s, Addresses: %v\n", node.Alias, node.Addresses)
 		certParam, err := CertParamsFromConfig(cfg.CertConfig)
 		if err != nil {
 			return err
@@ -95,7 +93,7 @@ func generateCSRs(cfg *Config) error {
 		certParam.Organization = []string{fmt.Sprintf("system:node:%s", node.Alias)}
 		certParam.CommonName = "system.nodes"
 
-		if err := outputKeyCSR(path.Join("node-certs", node.Alias), cfg.OverwriteFiles, certParam); err != nil {
+		if err := outputKeyCSR(node.Alias, cfg.OverwriteFiles, certParam); err != nil {
 			return err
 		}
 	}
@@ -109,15 +107,15 @@ func generateCSRs(cfg *Config) error {
 		certParam.CommonFields = cfg.CommonFields
 
 		str1, str2 := reflect.ValueOf(&certParam.CommonFields), reflect.ValueOf(&extraCert.CommonFields)
-		for i := 0; i < str1.NumField(); i++ {
-			if str2.Field(i).Len() > 0 {
-				str1.Field(i).Set(str2.Field(i))
+		for i := 0; i < str1.Elem().NumField(); i++ {
+			if str2.Elem().Field(i).Len() > 0 {
+				str1.Elem().Field(i).Set(str2.Elem().Field(i))
 			}
 		}
 
-		fmt.Printf("%#v", certParam)
+		fmt.Printf("%#v\n", certParam)
 
-		if err := outputKeyCSR(path.Join("extra-certs", extraCert.Name), cfg.OverwriteFiles, certParam); err != nil {
+		if err := outputKeyCSR(extraCert.Name, cfg.OverwriteFiles, certParam); err != nil {
 			return err
 		}
 	}

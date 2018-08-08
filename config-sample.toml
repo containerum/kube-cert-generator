@@ -1,0 +1,48 @@
+overwrite_files = false
+
+validity_period = "24h"
+key_size = 2048
+
+[common_fields]
+common_name = "Sample Cert"
+country = ["RU"]
+organization = ["org"]
+organization_unit = ["ou"]
+locality = []
+province = []
+street_address = []
+postal_code = []
+
+[master_node]
+alias = "master"
+addresses = ["localhost", "127.0.0.1"]
+
+[[worker_node]]
+alias = "wrk1"
+addresses = ["node1", "192.168.1.2"]
+
+[[extra_cert]]
+name = "etcd"
+common_name = "etcd certificate"
+country = ["RU"]
+organization = ["org"]
+organization_unit = ["ou"]
+locality = []
+province = []
+street_address = []
+postal_code = []
+validity_period = "24h"
+key_size = 2048
+
+[ca]
+root_dir = "ca"
+common_name = "Sample Cert"
+country = ["RU"]
+organization = ["org"]
+organization_unit = ["ou"]
+locality = []
+province = []
+street_address = []
+postal_code = []
+validity_period = "24h"
+key_size = 2048
