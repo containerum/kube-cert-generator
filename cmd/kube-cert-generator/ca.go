@@ -22,6 +22,8 @@ func initCA(cfg *Config) error {
 	if err != nil {
 		return err
 	}
+	certParams.CommonFields = cfg.CAConfig.CommonFields
+
 	privateKey, err := certParams.GenKey()
 	if err != nil {
 		return err
