@@ -8,6 +8,28 @@
   version = "v0.3.0"
 
 [[projects]]
+  name = "github.com/boltdb/bolt"
+  packages = ["."]
+  revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
+  version = "v1.3.1"
+
+[[projects]]
+  name = "github.com/google/easypki"
+  packages = [
+    "pkg/certificate",
+    "pkg/easypki",
+    "pkg/store"
+  ]
+  revision = "da29806f5b70ad69f35f13566768252e4d6588af"
+  version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "acbc56fc7007d2a01796d5bde54f39e3b3e95945"
+
+[[projects]]
   branch = "v2"
   name = "gopkg.in/urfave/cli.v2"
   packages = ["."]
@@ -16,6 +38,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f9e90b868b7b990c8bc5cab109976c914dc60cbeddc878e53ec3ca240374c70b"
+  inputs-digest = "5d513d8900743c17658750574e796bd2630b429f60490d440ad30ed37fc2be34"
   solver-name = "gps-cdcl"
   solver-version = 1

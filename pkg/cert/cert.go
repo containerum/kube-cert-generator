@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"math/big"
 	"time"
 )
 
@@ -60,6 +61,7 @@ func (c *Params) CSRTemplate() *x509.CertificateRequest {
 
 func (c *Params) CACertTemplate() *x509.Certificate {
 	return &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
 		NotBefore:             time.Now().UTC(),
 		NotAfter:              time.Now().Add(c.ValidityPeriod).UTC(),
 		BasicConstraintsValid: true,

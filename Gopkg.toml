@@ -10,3 +10,7 @@
 [[constraint]]
   branch = "v2"
   name = "gopkg.in/urfave/cli.v2"
+
+[[constraint]]
+  name = "github.com/google/easypki"
+  version = "1.1.0"
