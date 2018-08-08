@@ -83,6 +83,11 @@ func signCSRs(cfg *Config, files []string, caName string) error {
 			return err
 		}
 
+		serial, err := rand.Int(rand.Reader, big.NewInt(big.MaxExp))
+		if err != nil {
+			return err
+		}
+
 		request := &easypki.Request{
 			Name:                strings.TrimSuffix(path.Base(file), path.Ext(file)),
 			IsClientCertificate: true,
@@ -94,7 +99,7 @@ func signCSRs(cfg *Config, files []string, caName string) error {
 				PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
 				PublicKey:          csr.PublicKey,
 
-				SerialNumber: big.NewInt(2),
+				SerialNumber: serial,
 				Issuer:       caSigner.Cert.Subject,
 				Subject:      csr.Subject,
 				NotBefore:    time.Now().UTC(),
