@@ -24,14 +24,8 @@ func main() {
 			&configFlag,
 		},
 		Before: func(context *cli.Context) error {
-			cfgFile, err := os.Open(context.String(configFlag.Name))
-			if err != nil {
-				return err
-			}
-			defer cfgFile.Close()
-
 			var cfg Config
-			if _, err := toml.DecodeReader(cfgFile, &cfg); err != nil {
+			if _, err := toml.DecodeFile(context.String(configFlag.Name), &cfg); err != nil {
 				return err
 			}
 			context.App.Metadata[configContextKey] = &cfg
