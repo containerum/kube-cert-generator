@@ -16,6 +16,7 @@ type csrParams struct {
 	CN          string
 	O           string
 	IncludeSANs bool
+	DNSNames    []string
 }
 
 func (c csrParams) String() string {
@@ -31,7 +32,7 @@ var kubeStandardCSRs = []csrParams{
 	{FileName: "admin", CN: "admin", O: "system:masters", IncludeSANs: false},
 	{FileName: "kube-controller-manager", CN: "system:kube-controller-manager", O: "system:kube-controller-manager", IncludeSANs: false},
 	{FileName: "kube-proxy", CN: "system:kube-proxy", O: "system:node-proxier", IncludeSANs: false},
-	{FileName: "kubernetes", CN: "kubernetes", O: "kubernetes", IncludeSANs: true},
+	{FileName: "kubernetes", CN: "kubernetes", O: "kubernetes", IncludeSANs: true, DNSNames: []string{"kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc.cluster.local"}},
 	{FileName: "kube-scheduler", CN: "system:kube-scheduler", O: "system:kube-scheduler", IncludeSANs: false},
 	{FileName: "service-accounts", CN: "service-accounts", O: "Kubernetes", IncludeSANs: false},
 }
@@ -72,6 +73,10 @@ func generateCSRs(cfg *Config) error {
 		if param.IncludeSANs {
 			certParam.SubjectAdditionalNames = cfg.MasterNode.ToSANs()
 		}
+		if len(param.DNSNames) > 0 {
+			certParam.DNSNames = append(certParam.DNSNames, param.DNSNames...)
+		}
+
 		certParam.CommonFields = cfg.CommonFields
 		certParam.Organization = []string{param.O}
 		certParam.CommonName = param.CN
@@ -90,8 +95,8 @@ func generateCSRs(cfg *Config) error {
 		}
 		certParam.SubjectAdditionalNames = node.ToSANs()
 		certParam.CommonFields = cfg.CommonFields
-		certParam.Organization = []string{fmt.Sprintf("system:node:%s", node.Alias)}
-		certParam.CommonName = "system.nodes"
+		certParam.Organization = []string{"system:nodes"}
+		certParam.CommonName = fmt.Sprintf("system:node:%s", node.Alias)
 
 		if err := outputKeyCSR(node.Alias, cfg.OverwriteFiles, certParam); err != nil {
 			return err
