@@ -106,6 +106,8 @@ func signCSRs(cfg *Config, files []string, caName string) error {
 				NotAfter:     time.Now().Add(cfg.ValidityPeriod.Duration).UTC(),
 				KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 				ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+				IPAddresses:  csr.IPAddresses,
+				DNSNames:     csr.DNSNames,
 			},
 		}
 
