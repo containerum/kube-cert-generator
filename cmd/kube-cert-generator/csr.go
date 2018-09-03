@@ -113,8 +113,6 @@ func generateCSRs(cfg *Config) error {
 			}
 		}
 
-		fmt.Printf("%#v\n", certParam)
-
 		if err := outputKeyCSR(extraCert.Name, cfg.OverwriteFiles, certParam); err != nil {
 			return err
 		}
