@@ -138,6 +138,6 @@ var signCommand = cli.Command{
 	Usage: "Sign a certificate signing request",
 	Flags: []cli.Flag{&caNameFlag},
 	Action: func(ctx *cli.Context) error {
-		return signCSRs(ctx.App.Metadata[configContextKey].(*Config), ctx.Args().Tail(), ctx.String(caNameFlag.Name))
+		return signCSRs(ctx.App.Metadata[configContextKey].(*Config), ctx.Args().Slice(), ctx.String(caNameFlag.Name))
 	},
 }
