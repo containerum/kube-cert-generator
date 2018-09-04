@@ -17,3 +17,8 @@
 
 kube-cert-generator
 !kube-cert-generator/
+
+/cert
+ca
+
+config.toml

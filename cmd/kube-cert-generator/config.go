@@ -39,7 +39,7 @@ type ExtraCertConfig struct {
 
 	cert.CommonFields
 	CertConfig
-	Hosts []cert.Host `toml:"host"`
+	Host cert.Host `toml:"host"`
 }
 
 // CAConfig represents configuration for certificate authority

@@ -105,11 +105,14 @@ func generateCSRs(cfg *Config) error {
 
 	fmt.Println("Generate extra certs")
 	for _, extraCert := range cfg.ExtraCerts {
+		fmt.Printf("Name: %s, Node: %s, Addresses: %v\n", extraCert.Name, extraCert.Host.Alias, extraCert.Host.Addresses)
 		certParam, err := CertParamsFromConfig(extraCert.CertConfig)
 		if err != nil {
 			return err
 		}
+
 		certParam.CommonFields = cfg.CommonFields
+		certParam.SubjectAdditionalNames = extraCert.Host.ToSANs()
 
 		str1, str2 := reflect.ValueOf(&certParam.CommonFields), reflect.ValueOf(&extraCert.CommonFields)
 		for i := 0; i < str1.Elem().NumField(); i++ {
@@ -131,5 +134,8 @@ var generateCSRsCmd = cli.Command{
 	Usage: "Generate private key and certificate signing requests using config",
 	Action: func(ctx *cli.Context) error {
 		return generateCSRs(ctx.App.Metadata[configContextKey].(*Config))
+	},
+	Flags: []cli.Flag{
+		&configFlag,
 	},
 }
