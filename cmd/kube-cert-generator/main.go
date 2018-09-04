@@ -31,12 +31,12 @@ func main() {
 			context.App.Metadata[configContextKey] = &cfg
 			return nil
 		},
-
 		Commands: []*cli.Command{
 			&generateCSRsCmd,
 			&initCACmd,
 			&signCommand,
 		},
+		Version: "1.0.1",
 	}
 
 	if err := app.Run(os.Args); err != nil {
