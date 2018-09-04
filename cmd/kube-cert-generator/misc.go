@@ -22,3 +22,10 @@ func createFileIfNotExist(path string, overwrite bool) (io.Writer, error) {
 	}
 	return os.Create(path)
 }
+
+func createDirIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return os.MkdirAll(path, os.ModePerm)
+	}
+	return nil
+}

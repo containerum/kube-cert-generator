@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/BurntSushi/toml"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -15,22 +14,17 @@ var (
 		Usage:   "path to config file",
 		Value:   "config.toml",
 	}
+	outputDirFlag = cli.StringFlag{
+		Name:    "output",
+		Aliases: []string{"o"},
+		Usage:   "path to output dir",
+		Value:   "cert",
+	}
 )
 
 func main() {
 	app := cli.App{
 		Name: "kube-cert-generator",
-		Flags: []cli.Flag{
-			&configFlag,
-		},
-		Before: func(context *cli.Context) error {
-			var cfg Config
-			if _, err := toml.DecodeFile(context.String(configFlag.Name), &cfg); err != nil {
-				return err
-			}
-			context.App.Metadata[configContextKey] = &cfg
-			return nil
-		},
 		Commands: []*cli.Command{
 			&generateCSRsCmd,
 			&initCACmd,

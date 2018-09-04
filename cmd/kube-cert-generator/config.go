@@ -6,7 +6,10 @@ import (
 	"github.com/containerum/kube-cert-generator/pkg/cert"
 )
 
-const configContextKey = "config"
+const (
+	configContextKey    = "config"
+	outputDirContextKey = "output"
+)
 
 func CertParamsFromConfig(cfg CertConfig) (cert.Params, error) {
 	ret := cert.Params{

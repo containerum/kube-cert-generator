@@ -5,8 +5,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"path"
 	"reflect"
 
+	"github.com/BurntSushi/toml"
 	"github.com/containerum/kube-cert-generator/pkg/cert"
 	"gopkg.in/urfave/cli.v2"
 )
@@ -37,7 +39,9 @@ var kubeStandardCSRs = []csrParams{
 	{FileName: "service-accounts", CN: "service-accounts", O: "Kubernetes", IncludeSANs: false},
 }
 
-func outputKeyCSR(fileName string, overwriteFiles bool, certParam cert.Params) error {
+func outputKeyCSR(fileName string, dirPath string, overwriteFiles bool, certParam cert.Params) error {
+	fileName = path.Join(dirPath, fileName)
+
 	key, err := certParam.GenKey()
 	if err != nil {
 		return err
@@ -46,6 +50,7 @@ func outputKeyCSR(fileName string, overwriteFiles bool, certParam cert.Params) e
 	if err != nil {
 		return err
 	}
+	fmt.Printf("KEY file: %v.key\n", fileName)
 	if err := pem.Encode(keyFile, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}); err != nil {
 		return nil
 	}
@@ -57,10 +62,12 @@ func outputKeyCSR(fileName string, overwriteFiles bool, certParam cert.Params) e
 	if err := pem.Encode(csrFile, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr}); err != nil {
 		return err
 	}
+	fmt.Printf("CSR file: %v.csr\n", fileName)
+	fmt.Println()
 	return nil
 }
 
-func generateCSRs(cfg *Config) error {
+func generateCSRs(cfg *Config, ourDir string) error {
 	fmt.Println("Generate pairs of private keys and certificate signing requests")
 
 	fmt.Println("Generate basic kubernetes csr-key pairs")
@@ -81,7 +88,7 @@ func generateCSRs(cfg *Config) error {
 		certParam.Organization = []string{param.O}
 		certParam.CommonName = param.CN
 
-		if err := outputKeyCSR(param.FileName, cfg.OverwriteFiles, certParam); err != nil {
+		if err := outputKeyCSR(param.FileName, ourDir, cfg.OverwriteFiles, certParam); err != nil {
 			return err
 		}
 	}
@@ -98,7 +105,7 @@ func generateCSRs(cfg *Config) error {
 		certParam.Organization = []string{"system:nodes"}
 		certParam.CommonName = fmt.Sprintf("system:node:%s", node.Alias)
 
-		if err := outputKeyCSR(node.Alias, cfg.OverwriteFiles, certParam); err != nil {
+		if err := outputKeyCSR(node.Alias, ourDir, cfg.OverwriteFiles, certParam); err != nil {
 			return err
 		}
 	}
@@ -121,7 +128,7 @@ func generateCSRs(cfg *Config) error {
 			}
 		}
 
-		if err := outputKeyCSR(extraCert.Name, cfg.OverwriteFiles, certParam); err != nil {
+		if err := outputKeyCSR(extraCert.Name, ourDir, cfg.OverwriteFiles, certParam); err != nil {
 			return err
 		}
 	}
@@ -132,10 +139,26 @@ func generateCSRs(cfg *Config) error {
 var generateCSRsCmd = cli.Command{
 	Name:  "gen-csr",
 	Usage: "Generate private key and certificate signing requests using config",
-	Action: func(ctx *cli.Context) error {
-		return generateCSRs(ctx.App.Metadata[configContextKey].(*Config))
-	},
 	Flags: []cli.Flag{
 		&configFlag,
+		&outputDirFlag,
+	},
+	Before: func(ctx *cli.Context) error {
+		var cfg Config
+		if _, err := toml.DecodeFile(ctx.String(configFlag.Name), &cfg); err != nil {
+			return err
+		}
+		ctx.App.Metadata[configContextKey] = &cfg
+		ctx.App.Metadata[outputDirContextKey] = ctx.String("output")
+
+		if outDir := ctx.App.Metadata[outputDirContextKey].(string); outDir != "" {
+			if err := createDirIfNotExists(outDir); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+	Action: func(ctx *cli.Context) error {
+		return generateCSRs(ctx.App.Metadata[configContextKey].(*Config), ctx.App.Metadata[outputDirContextKey].(string))
 	},
 }
