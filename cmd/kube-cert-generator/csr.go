@@ -35,7 +35,7 @@ var kubeStandardCSRs = []csrParams{
 	{FileName: "kube-proxy", CN: "system:kube-proxy", O: "system:node-proxier", IncludeSANs: false},
 	{FileName: "kubernetes", CN: "kubernetes", O: "kubernetes", IncludeSANs: true, DNSNames: []string{"kubernetes", "kubernetes.default", "kubernetes.default.svc", "kubernetes.default.svc.cluster.local"}},
 	{FileName: "kube-scheduler", CN: "system:kube-scheduler", O: "system:kube-scheduler", IncludeSANs: false},
-	{FileName: "service-accounts", CN: "service-accounts", O: "Kubernetes", IncludeSANs: false},
+	{FileName: "service-account", CN: "service-accounts", O: "Kubernetes", IncludeSANs: false},
 }
 
 func outputKeyCSR(fileName string, dirPath string, overwriteFiles bool, certParam cert.Params) error {
