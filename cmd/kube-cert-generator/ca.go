@@ -114,6 +114,7 @@ func signCSRs(cfg *Config, files []string, caName string, outputDir string) erro
 		if err != nil {
 			return err
 		}
+
 		if err := csr.CheckSignature(); err != nil {
 			return err
 		}
@@ -123,46 +124,35 @@ func signCSRs(cfg *Config, files []string, caName string, outputDir string) erro
 			return err
 		}
 
-		request := &easypki.Request{
-			Name:                strings.TrimSuffix(path.Base(file), path.Ext(file)),
-			IsClientCertificate: true,
-			PrivateKeySize:      cfg.KeySize,
-			Template: &x509.Certificate{
-				Signature:          csr.Signature,
-				SignatureAlgorithm: csr.SignatureAlgorithm,
-
-				PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
-				PublicKey:          csr.PublicKey,
-
-				SerialNumber: serial,
-				Issuer:       caSigner.Cert.Subject,
-				Subject:      csr.Subject,
-				NotBefore:    time.Now().UTC(),
-				NotAfter:     time.Now().Add(cfg.ValidityPeriod.Duration).UTC(),
-				KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-				ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-				IPAddresses:  csr.IPAddresses,
-				DNSNames:     csr.DNSNames,
-			},
+		// step: create the request template
+		template := x509.Certificate{
+			SerialNumber:          serial,
+			Issuer:                caSigner.Cert.Subject,
+			Subject:               csr.Subject,
+			NotBefore:             time.Now().UTC(),
+			NotAfter:              time.Now().Add(cfg.ValidityPeriod.Duration).UTC(),
+			BasicConstraintsValid: true,
+			IsCA:        true,
+			KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+			IPAddresses: csr.IPAddresses,
+			DNSNames:    csr.DNSNames,
 		}
 
-		if err := pki.Sign(caSigner, request); err != nil {
-			return err
-		}
-
-		cert, err := pki.GetBundle(caName, request.Name)
+		// step: sign the certificate authority
+		cert, err := x509.CreateCertificate(rand.Reader, &template, caSigner.Cert, csr.PublicKey, caSigner.Key)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate certificate, error: %s", err)
 		}
 
-		certName := path.Join(outputDir, cert.Name+".crt")
+		certName := path.Join(outputDir, strings.TrimSuffix(path.Base(file), path.Ext(file))+".crt")
 		certFile, err := createFileIfNotExist(certName, cfg.OverwriteFiles)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("Cert created: %v\n", certName)
 
-		if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Cert.Raw}); err != nil {
+		if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert}); err != nil {
 			return err
 		}
 	}

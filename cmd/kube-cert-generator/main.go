@@ -37,7 +37,7 @@ func main() {
 			&initCACmd,
 			&signCommand,
 		},
-		Version: "1.0.3",
+		Version: "1.0.4",
 	}
 
 	if err := app.Run(os.Args); err != nil {
