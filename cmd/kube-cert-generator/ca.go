@@ -17,9 +17,59 @@ import (
 	"gopkg.in/urfave/cli.v2"
 )
 
-func initCA(cfg *Config, caName string) error {
-	fmt.Println("Initialize certificate authority at", path.Join(cfg.CAConfig.RootDir, caName))
-	caStore := getCAStore(cfg)
+var caNameFlag = cli.StringFlag{
+	Name:  "name",
+	Usage: "Certificate authority name",
+	Value: "root",
+}
+
+var initCACmd = cli.Command{
+	Name:  "init-ca",
+	Usage: "initialize certificate authority",
+	Flags: []cli.Flag{
+		&caNameFlag,
+		&configFlag,
+		// &outputDirFlag,
+	},
+	Before: func(ctx *cli.Context) error {
+		if err := initConfig(ctx); err != nil {
+			return err
+		}
+		if err := initOutputDir(ctx); err != nil {
+			return err
+		}
+		return nil
+	},
+	Action: func(ctx *cli.Context) error {
+		return initCA(ctx.App.Metadata[configContextKey].(*Config), ctx.String(caNameFlag.Name), ctx.App.Metadata[outputDirContextKey].(string))
+	},
+}
+
+var signCommand = cli.Command{
+	Name:  "sign",
+	Usage: "Sign a certificate signing request",
+	Flags: []cli.Flag{
+		&caNameFlag,
+		&configFlag,
+		&outputDirFlag,
+	},
+	Before: func(ctx *cli.Context) error {
+		if err := initConfig(ctx); err != nil {
+			return err
+		}
+		if err := initOutputDir(ctx); err != nil {
+			return err
+		}
+		return nil
+	},
+	Action: func(ctx *cli.Context) error {
+		return signCSRs(ctx.App.Metadata[configContextKey].(*Config), ctx.Args().Slice(), ctx.String(caNameFlag.Name), ctx.App.Metadata[outputDirContextKey].(string))
+	},
+}
+
+func initCA(cfg *Config, caName string, outputDir string) error {
+	fmt.Println("Initialize certificate authority at", path.Join(outputDir, cfg.CAConfig.RootDir, caName))
+	caStore := getCAStore(cfg, outputDir)
 
 	fmt.Println("Generate key/cert")
 	certParams, err := CertParamsFromConfig(cfg.CertConfig)
@@ -42,28 +92,13 @@ func initCA(cfg *Config, caName string) error {
 	return caStore.Add(caName, caName, true, x509.MarshalPKCS1PrivateKey(privateKey), cert)
 }
 
-var caNameFlag = cli.StringFlag{
-	Name:  "ca",
-	Usage: "Certificate authority name",
-	Value: "root",
+func getCAStore(cfg *Config, outputDir string) *store.Local {
+	os.Mkdir(path.Join(outputDir, cfg.CAConfig.RootDir), os.ModePerm)
+	return &store.Local{Root: path.Join(outputDir, cfg.CAConfig.RootDir)}
 }
 
-var initCACmd = cli.Command{
-	Name:  "init-ca",
-	Usage: "initialize certificate authority",
-	Flags: []cli.Flag{&caNameFlag},
-	Action: func(ctx *cli.Context) error {
-		return initCA(ctx.App.Metadata[configContextKey].(*Config), ctx.String(caNameFlag.Name))
-	},
-}
-
-func getCAStore(cfg *Config) *store.Local {
-	os.Mkdir(cfg.CAConfig.RootDir, os.ModePerm)
-	return &store.Local{Root: cfg.CAConfig.RootDir}
-}
-
-func signCSRs(cfg *Config, files []string, caName string) error {
-	pki := easypki.EasyPKI{Store: getCAStore(cfg)}
+func signCSRs(cfg *Config, files []string, caName string, outputDir string) error {
+	pki := easypki.EasyPKI{Store: getCAStore(cfg, "")}
 	caSigner, err := pki.GetCA(caName)
 	if err != nil {
 		return err
@@ -120,10 +155,12 @@ func signCSRs(cfg *Config, files []string, caName string) error {
 			return err
 		}
 
-		certFile, err := createFileIfNotExist(cert.Name+".crt", cfg.OverwriteFiles)
+		certName := path.Join(outputDir, cert.Name+".crt")
+		certFile, err := createFileIfNotExist(certName, cfg.OverwriteFiles)
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Cert created: %v\n", certName)
 
 		if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Cert.Raw}); err != nil {
 			return err
@@ -131,13 +168,4 @@ func signCSRs(cfg *Config, files []string, caName string) error {
 	}
 
 	return nil
-}
-
-var signCommand = cli.Command{
-	Name:  "sign",
-	Usage: "Sign a certificate signing request",
-	Flags: []cli.Flag{&caNameFlag},
-	Action: func(ctx *cli.Context) error {
-		return signCSRs(ctx.App.Metadata[configContextKey].(*Config), ctx.Args().Slice(), ctx.String(caNameFlag.Name))
-	},
 }

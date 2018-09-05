@@ -60,6 +60,7 @@ type Config struct {
 	CertConfig
 	MasterNode  cert.Host         `toml:"master_node"`
 	WorkerNodes []cert.Host       `toml:"worker_node"`
+	EtcdNodes   []cert.Host       `toml:"etcd_node"`
 	ExtraCerts  []ExtraCertConfig `toml:"extra_cert"`
 	CAConfig    CAConfig          `toml:"ca"`
 }

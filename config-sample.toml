@@ -21,6 +21,10 @@ addresses = ["localhost", "127.0.0.1"]
 alias = "wrk1"
 addresses = ["node1", "192.168.1.2"]
 
+[[etcd_node]]
+alias = "etcd1"
+addresses = ["ectd1", "192.168.1.2"]
+
 [[extra_cert]]
 name = "etcd"
 common_name = "etcd certificate"
@@ -35,11 +39,11 @@ validity_period = "24h"
 key_size = 2048
 
   [extra_cert.host]
-  alias = "etcd1"
-  addresses = ["etcd1", "127.0.0.1", "192.168.0.1"]
+  alias = "etcd2"
+  addresses = ["etcd2", "127.0.0.1", "192.168.0.1"]
 
 [ca]
-root_dir = "ca"
+root_dir = "cert"
 common_name = "Sample Cert"
 country = ["RU"]
 organization = ["org"]

@@ -8,7 +8,6 @@ import (
 	"path"
 	"reflect"
 
-	"github.com/BurntSushi/toml"
 	"github.com/containerum/kube-cert-generator/pkg/cert"
 	"gopkg.in/urfave/cli.v2"
 )
@@ -110,6 +109,23 @@ func generateCSRs(cfg *Config, ourDir string) error {
 		}
 	}
 
+	fmt.Println("Generate etcd certificates")
+	for _, node := range cfg.EtcdNodes {
+		fmt.Printf("Node: %s, Addresses: %v\n", node.Alias, node.Addresses)
+		certParam, err := CertParamsFromConfig(cfg.CertConfig)
+		if err != nil {
+			return err
+		}
+		certParam.SubjectAdditionalNames = node.ToSANs()
+		certParam.CommonFields = cfg.CommonFields
+		certParam.Organization = []string{"system:etcd"}
+		certParam.CommonName = fmt.Sprintf("system:ectd:%s", node.Alias)
+
+		if err := outputKeyCSR(node.Alias, ourDir, cfg.OverwriteFiles, certParam); err != nil {
+			return err
+		}
+	}
+
 	fmt.Println("Generate extra certs")
 	for _, extraCert := range cfg.ExtraCerts {
 		fmt.Printf("Name: %s, Node: %s, Addresses: %v\n", extraCert.Name, extraCert.Host.Alias, extraCert.Host.Addresses)
@@ -144,17 +160,11 @@ var generateCSRsCmd = cli.Command{
 		&outputDirFlag,
 	},
 	Before: func(ctx *cli.Context) error {
-		var cfg Config
-		if _, err := toml.DecodeFile(ctx.String(configFlag.Name), &cfg); err != nil {
+		if err := initConfig(ctx); err != nil {
 			return err
 		}
-		ctx.App.Metadata[configContextKey] = &cfg
-		ctx.App.Metadata[outputDirContextKey] = ctx.String("output")
-
-		if outDir := ctx.App.Metadata[outputDirContextKey].(string); outDir != "" {
-			if err := createDirIfNotExists(outDir); err != nil {
-				return err
-			}
+		if err := initOutputDir(ctx); err != nil {
+			return err
 		}
 		return nil
 	},
