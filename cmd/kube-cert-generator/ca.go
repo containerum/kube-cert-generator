@@ -115,7 +115,7 @@ func signCSRs(cfg *Config, files []string, caName string, outputDir string) erro
 			return err
 		}
 
-		if err := csr.CheckSignature(); err != nil {
+		if err = csr.CheckSignature(); err != nil {
 			return err
 		}
 
