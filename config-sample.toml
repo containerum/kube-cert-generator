@@ -15,7 +15,7 @@ postal_code = []
 
 [master_node]
 alias = "master"
-addresses = ["localhost", "127.0.0.1"]
+addresses = ["10.96.0.1"]
 
 [[worker_node]]
 alias = "wrk1"
