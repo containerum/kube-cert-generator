@@ -132,7 +132,7 @@ func signCSRs(cfg *Config, files []string, caName string, outputDir string) erro
 			NotBefore:             time.Now().UTC(),
 			NotAfter:              time.Now().Add(cfg.ValidityPeriod.Duration).UTC(),
 			BasicConstraintsValid: true,
-			IsCA:        true,
+			IsCA:        false,
 			KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 			IPAddresses: csr.IPAddresses,

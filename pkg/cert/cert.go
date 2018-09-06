@@ -65,9 +65,9 @@ func (c *Params) CACertTemplate() *x509.Certificate {
 		NotBefore:             time.Now().UTC(),
 		NotAfter:              time.Now().Add(c.ValidityPeriod).UTC(),
 		BasicConstraintsValid: true,
-		IsCA:        true,
-		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		IsCA:     true,
+		KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		Subject:  c.ToPKIXName(),
 	}
 }
 
